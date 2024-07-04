@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización de Variables - Proyecto de Calidad de Aire</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1b1b1b;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #444;
+        }
+        th {
+            background-color: #333;
+        }
+        td {
+            background-color: #222;
+        }
+        .chart-container {
+            margin-top: 30px;
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+        .sensor-chart {
+            width: 45%;
+            margin-bottom: 20px;
+        }
+        .btn-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            margin-right: 20px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+    <!-- Incluir el script de Google Charts -->
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Visualización de Variables del Proyecto</h1>
+        <h2>Nombre del Proyecto: <span id="nombreProyecto"></span></h2>
+        <h2>Piloto: <span id="piloto"></span></h2>
+        <h2>Ubicación: <span id="ubicacion"></span></h2>
+        <h2>Coordenadas: <span id="coordenadas"></span></h2>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Sensor</th>
+                    <th>Variable</th>
+                    <th>Valor</th>
+                    <th>Unidad</th>
+                </tr>
+            </thead>
+            <tbody id="sensorData">
+                <tr>
+                    <td>Monóxido de Carbono</td>
+                    <td>mq8</td>
+                    <td id="sensor1Value">0</td>
+                    <td>pmm</td>
+                </tr>
+                <tr>
+                    <td>Dióxido de Carbono</td>
+                    <td>mg811</td>
+                    <td id="sensor2Value">0</td>
+                    <td>pmm</td>
+                </tr>
+                <tr>
+                    <td>Nitrogeno</td>
+                    <td>mq135</td>
+                    <td id="sensor3Value">0</td>
+                    <td>pmm</td>
+                </tr>
+                <tr>
+                    <td>Monóxido de carbono</td>
+                    <td>mq7</td>
+                    <td id="sensor4Value">0</td>
+                    <td>pmm</td>
+                </tr>
+                <tr>
+                    <td>Tipo de partículas</td>
+                    <td>sds25</td>
+                    <td id="sensor5Value">0</td>
+                    <td>um</td>
+                </tr>
+                <tr>
+                    <td>Tipo de partículas</td>
+                    <td>sds10</td>
+                    <td id="sensor6Value">0</td>
+                    <td>um</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="chart-container">
+            <div class="sensor-chart" id="sensor1_chart"></div>
+            <div class="sensor-chart" id="sensor2_chart"></div>
+            <div class="sensor-chart" id="sensor3_chart"></div>
+            <div class="sensor-chart" id="sensor4_chart"></div>
+            <div class="sensor-chart" id="sensor5_chart"></div>
+            <div class="sensor-chart" id="sensor6_chart"></div>
+        </div>
+
+        <!-- Contenedor de botones -->
+        <div class="btn-container">
+            <button class="btn" onclick="nuevoProyecto()">Ingresar Nuevo Proyecto</button>
+            <button class="btn" onclick="verHistoria()">Historia</button>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales para almacenar los gráficos y datos
+        let charts = [];
+        let sensorData = {};
+
+        // Obtener los parámetros de la URL y mostrarlos en la página
+        const urlParams = new URLSearchParams(window.location.search);
+        document.getElementById('nombreProyecto').textContent = urlParams.get('nombreProyecto') || 'Nombre del Proyecto';
+        document.getElementById('piloto').textContent = urlParams.get('piloto') || 'Piloto';
+        document.getElementById('ubicacion').textContent = urlParams.get('ubicacion') || 'Ubicación';
+        document.getElementById('coordenadas').textContent = urlParams.get('coordenadas') || 'Coordenadas';
+
+        // Función para cargar los datos desde el servidor y actualizar la página
+        function cargarDatos() {
+            fetch('probar_conexion.php?q=1')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Datos recibidos:', data);
+
+                    // Actualizar los valores en la tabla HTML
+                    document.getElementById('sensor1Value').textContent = data.mq8;
+                    document.getElementById('sensor2Value').textContent = data.mg811;
+                    document.getElementById('sensor3Value').textContent = data.mq135;
+                    document.getElementById('sensor4Value').textContent = data.mq7;
+                    document.getElementById('sensor5Value').textContent = data.sds25;
+                    document.getElementById('sensor6Value').textContent = data.sds10;
+
+                    // Actualizar los datos globales
+                    sensorData = data;
+
+                    // Actualizar los gráficos
+                    actualizarDatosGraficos();
+                })
+                .catch(error => console.error('Error al obtener datos:', error));
+        }
+
+        // Función para actualizar los datos en los gráficos existentes
+        function actualizarDatosGraficos() {
+            if (charts.length === 0) {
+                // Si no hay gráficos, inicializarlos
+                google.charts.load('current', {packages: ['corechart']});
+                google.charts.setOnLoadCallback(inicializarGraficos);
+            } else {
+                // Si ya hay gráficos, actualizar datos
+                Object.keys(sensorData).forEach((key, index) => {
+                    let sensorNum = index + 1;
+                    let variable = key;
+                    let value = parseFloat(sensorData[key]);
+
+                    // Agregar el nuevo punto de datos al gráfico correspondiente
+                    let chart = charts[index].chart;
+                    let data = charts[index].data;
+                    let rowCount = data.getNumberOfRows();
+                    data.addRow([`Tiempo ${rowCount}`, value]);
+
+                    // Actualizar el gráfico
+                    chart.draw(data, charts[index].options);
+
+                    // Actualizar el valor debajo del gráfico
+                    document.getElementById(`sensor${sensorNum}Value`).textContent = value;
+                });
+            }
+        }
+
+        // Función para inicializar los gráficos
+        function inicializarGraficos() {
+            // Crear un gráfico para cada sensor
+            Object.keys(sensorData).forEach((key, index) => {
+                let sensorNum = index + 1;
+                let variable = key;
+                let unidad = `unidad${index + 1}`;
+                let containerId = `sensor${sensorNum}_chart`;
+                let value = parseFloat(sensorData[key]);
+
+                // Crear tabla de datos y opciones del gráfico
+                let data = new google.visualization.DataTable();
+                data.addColumn('string', 'Tiempo');
+                data.addColumn('number', variable);
+                data.addRow(['Tiempo 0', value]);
+
+                let options = {
+                    title: `Sensor ${sensorNum} - ${variable}`,
+                    curveType: 'function',
+                    legend: { position: 'bottom' }
+                };
+
+                // Crear y guardar el gráfico en la lista
+                let chart = new google.visualization.LineChart(document.getElementById(containerId));
+                charts.push({ chart, data, options });
+
+                // Dibujar el gráfico con los datos iniciales
+                chart.draw(data, options);
+
+                // Mostrar el valor debajo del gráfico
+                document.getElementById(containerId).insertAdjacentHTML('afterend',
+                    `<p><strong>Sensor ${sensorNum} - ${variable}</strong>: <span id="sensor${sensorNum}Value">${value}</span> ${unidad}</p>`
+                );
+            });
+        }
+
+        // Funciones para manejar los botones
+        function nuevoProyecto() {
+            // Redirigir a la página de inicio (index.html)
+            window.location.href = 'index2.html';
+        }
+
+        function verHistoria() {
+           // alert('Mostrar la historia del proyecto');
+    window.location.href = 'historial.html';
+            
+// Puedes redirigir usando window.location.href = 'URL_DE_LA_PAGINA';
+        }
+
+        // Cargar datos al cargar la página y cada 60 segundos
+        cargarDatos();
+        setInterval(cargarDatos, 6000); // Actualizar cada 60 segundos (60000 milisegundos)
+    </script>
+</body>
+</html>
